@@ -57,7 +57,7 @@ SCRIPTEND
 
 kubeadm_master =<<-SCRIPTEND
 
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint=master
+  kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint=192.168.56.5
   mkdir ~/.kube
   ln -s /etc/kubernetes/admin.conf /root/.kube/config
   chown $(id -u):$(id -g) $HOME/.kube/config
@@ -79,7 +79,7 @@ Vagrant.configure("2") do |config|
   # config.vm.box = "generic/alpine317"
 
   config.vm.box_check_update = true
-  config.vm.synced_folder ".", "/vagrant", disabled: true
+  config.vm.synced_folder "./shared", "/vagrant", mount_options: ["dmode=775","fmode=777"]
 
   # config.vm.shell 
 
@@ -122,18 +122,15 @@ Vagrant.configure("2") do |config|
 
     master.vm.hostname = "master"
     master.vm.network "public_network", bridge: ["eth0", "en0", "en0: Wi-Fi"]
-    master.vm.network "private_network", type: "dhcp"#, ip: "192.168.50.200", :bridge => "NAT"
+    master.vm.network "private_network", ip: "192.168.56.5", hostname: true
     
     # node.vm.network "forwarded_port", guest: 22, host: 2730
 
     master.vm.provision "Installing K8s-master", type: "shell", inline: "#{kubeadm_master}", privileged: true
 
-    config.trigger.after :provision do |t|
-      t.info = "Print Join command"
-      t.run = {
-        inline: "vagrant ssh --no-tty -c 'kubeadm token create --print-join-command' master > k8s-join.sh"
-      }
-    end
+    master.vm.provision "Print Join Command", type: "shell", inline:<<-SCRIPT
+      kubeadm token create --print-join-command > /vagrant/k8s-join.sh
+    SCRIPT
   end 
 
   (1..NUM_WORKDER_NODE).each do |i|
@@ -150,13 +147,15 @@ Vagrant.configure("2") do |config|
 
       node.vm.hostname = "node-#{i}"
       node.vm.network "public_network", bridge: ["eth0", "en0", "en0: Wi-Fi"]
-      node.vm.network "private_network", type: "dhcp"
+      node.vm.network "private_network", ip: "192.168.56.1#{i}", hostname: true
       # node.vm.network "private_network"
-      #node.vm.network "private_network", ip: "192.168.50.20#{i}", :bridge => "NAT"
+      
+      # node.vm.provision "file", source: "./shared/k8s-join.sh", destination: "/tmp/k8s-join.sh"
+      node.vm.provision "Join Node", type: "shell", inline:<<-SCRIPT
+        bash /vagrant/k8s-join.sh
+      SCRIPT
 
       node.vm.provision "Installing K8s-node", type: "shell", inline: "#{kubeadm_node}", privileged: true
-
-
     end
   end
 
