@@ -57,18 +57,23 @@ SCRIPTEND
 
 kubeadm_master =<<-SCRIPTEND
 
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint=192.168.56.5
+  kubeadm init --pod-network-cidr=192.168.0.0/16 --control-plane-endpoint=192.168.56.5
   mkdir ~/.kube
   ln -s /etc/kubernetes/admin.conf /root/.kube/config
   chown $(id -u):$(id -g) $HOME/.kube/config
-  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+  kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
+  # kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
 SCRIPTEND
 
 kubeadm_node =<<-SCRIPTEND
 
-  #kubeadm join master:6443 --token --discovery-token-ca-cert-hash
-  echo "run kubadm join"
+  bash /vagrant/k8s-join.sh
+
+  mkdir $HOME/.kube
+  cp /vagrant/kubeconfig $HOME/.kube/config
+  chown $(id -u):$(id -g) $HOME/.kube/config
 
 SCRIPTEND
 
@@ -130,6 +135,7 @@ Vagrant.configure("2") do |config|
 
     master.vm.provision "Print Join Command", type: "shell", inline:<<-SCRIPT
       kubeadm token create --print-join-command > /vagrant/k8s-join.sh
+      cp /root/.kube/config /vagrant/kubeconfig
     SCRIPT
   end 
 
@@ -150,25 +156,11 @@ Vagrant.configure("2") do |config|
       node.vm.network "private_network", ip: "192.168.56.1#{i}", hostname: true
       # node.vm.network "private_network"
       
-      # node.vm.provision "file", source: "./shared/k8s-join.sh", destination: "/tmp/k8s-join.sh"
-      node.vm.provision "Join Node", type: "shell", inline:<<-SCRIPT
-        bash /vagrant/k8s-join.sh
-      SCRIPT
-
       node.vm.provision "Installing K8s-node", type: "shell", inline: "#{kubeadm_node}", privileged: true
     end
   end
 
   config.vm.provision "Installing Packages", before: :each, type: "shell", inline: "#{bootstrap}", privileged: true
-  # config.vm.provision "shell", reboot: true
-  # config.vm.provision "Swap off", type: "shell", inline: "sudo swapoff -a", run: "always"
-
-  # if ("#{servers["name"]}").include? "master"
-    # config.vm.provision "Installing K8s-master", before: :each, type: "shell", inline: "#{kubeadm_master}", privileged: true
-  # end
-
-  # if ("#{servers["name"]}").include? "node"
-  # end
-  
+  config.vm.provision "shell", reboot: true
 
 end

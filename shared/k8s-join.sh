@@ -1,1 +1,1 @@
-kubeadm join master:6443 --token oky7vo.dwvg0stanevjo5rt --discovery-token-ca-cert-hash sha256:b818a0799808fa1cfccdf31c3390e7eb6e9520f165b7180434869758b059152f 
+kubeadm join 192.168.56.5:6443 --token ksowfy.frpz14trinn1itw0 --discovery-token-ca-cert-hash sha256:227710bba93ed060b2c87fe97cd959cb54be59ad35ee3a5d885df4227a94d0b4 

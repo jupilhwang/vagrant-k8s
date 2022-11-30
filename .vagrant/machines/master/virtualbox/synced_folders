@@ -1,1 +1,0 @@
-{"virtualbox":{"/vagrant":{"disabled":false,"guestpath":"/vagrant","hostpath":"/Users/jhwang/works/tmp/vagrant-k8s/shared","mount_options":["dmode=775","fmode=777","uid=1000","gid=1000","_netdev"],"__vagrantfile":true}}}
