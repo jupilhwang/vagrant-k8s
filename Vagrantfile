@@ -12,50 +12,66 @@ PROVIDER = ENV['provider'] || "virtualbox"
 VAGRANT_COMMAND = ARGV[0]
 
 bootstrap =<<-SCRIPTEND
-
+  apt update && apt -y upgrade
   swapoff -a
-  echo "http://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
-  echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-  echo "br_netfilter" > /etc/modules-load.d/k8s.conf
+  sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
 
-  apk add cni-plugin-flannel \
-    cni-plugins \
-    flannel \
-    flannel-contrib-cni \
-    containerd \
-    kubelet \
-    kubeadm \
-    kubectl \
-    uuidgen \
-    nfs-utils
+  echo "overlay" >> /etc/modules-load.d/containerd.conf
+  echo "br_netfilter" >> /etc/modules-load.d/containerd.conf
 
-  ln -sf /usr/libexec/cni/flannel-amd64 /usr/libexec/cni/flannel
+  modprobe overlay
+  modprobe br_netfilter
 
-  uuidgen > /etc/machine-id
+  echo "net.bridge.bridge-nf-call-iptables=1" >> /etc/sysctl.d/kubernetes.conf
+  echo "net.bridge.bridge-nf-call-ip6tables=1" >> /etc/sysctl.d/kubernetes.conf
+  echo "net.ipv4.ip_forward=1" >> /etc/sysctl.d/kubernetes.conf
 
-  echo "net.bridge.bridge-nf-call-iptables=1" >> /etc/sysctl.conf
-  echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-  sysctl -w net.bridge.bridge-nf-call-iptables=1
-  sysctl -w net.ipv4.ip_forward=1
+  modprobe overlay
+  modprobe br_netfilter
 
-  rc-update add containerd
-  rc-update add kubelet
-  # rc-update add ntpd
+  sysctl --system
 
-  # /etc/init.d/ntpd start
-  /etc/init.d/kubelet start
-  /etc/init.d/containerd start
+  apt install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/docker.gpg
+  curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/k8s.gpg
+  # curl -s https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - 
+  curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+
+  apt update
+  apt install -y containerd.io kubelet kubeadm kubectl kubernetes-cni
+  # apt-mark hold containerd kubelet kubeadm kubectl kubernetes-cni
+
+  containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+  sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+
+  systemctl restart containerd
+  systemctl enable containerd
+
+  systemctl restart kubelet
+  systemctl enable kubelet
 
 SCRIPTEND
 
 kubeadm_master =<<-SCRIPTEND
 
-  kubeadm init --pod-network-cidr=10.244.0.0/16 --node-name=master
+  kubeadm init --pod-network-cidr=10.244.0.0/16 --control-plane-endpoint=master
   mkdir ~/.kube
   ln -s /etc/kubernetes/admin.conf /root/.kube/config
-  kubectl apply -f https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+  chown $(id -u):$(id -g) $HOME/.kube/config
+  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 
 SCRIPTEND
+
+kubeadm_node =<<-SCRIPTEND
+
+  #kubeadm join master:6443 --token --discovery-token-ca-cert-hash
+  echo "run kubadm join"
+
+SCRIPTEND
+
 
 Vagrant.configure("2") do |config|
  
@@ -109,6 +125,15 @@ Vagrant.configure("2") do |config|
     master.vm.network "private_network", type: "dhcp"#, ip: "192.168.50.200", :bridge => "NAT"
     
     # node.vm.network "forwarded_port", guest: 22, host: 2730
+
+    master.vm.provision "Installing K8s-master", type: "shell", inline: "#{kubeadm_master}", privileged: true
+
+    config.trigger.after :provision do |t|
+      t.info = "Print Join command"
+      t.run = {
+        inline: "vagrant ssh --no-tty -c 'kubeadm token create --print-join-command' master > k8s-join.sh"
+      }
+    end
   end 
 
   (1..NUM_WORKDER_NODE).each do |i|
@@ -128,14 +153,23 @@ Vagrant.configure("2") do |config|
       node.vm.network "private_network", type: "dhcp"
       # node.vm.network "private_network"
       #node.vm.network "private_network", ip: "192.168.50.20#{i}", :bridge => "NAT"
+
+      node.vm.provision "Installing K8s-node", type: "shell", inline: "#{kubeadm_node}", privileged: true
+
+
     end
   end
 
   config.vm.provision "Installing Packages", before: :each, type: "shell", inline: "#{bootstrap}", privileged: true
-  config.vm.provision "shell", reboot: true
+  # config.vm.provision "shell", reboot: true
   # config.vm.provision "Swap off", type: "shell", inline: "sudo swapoff -a", run: "always"
-  config.vm.provision "Good Bye", type: "shell", after: :all, inline: <<-SHELL
-    echo "======================"
-  SHELL
+
+  # if ("#{servers["name"]}").include? "master"
+    # config.vm.provision "Installing K8s-master", before: :each, type: "shell", inline: "#{kubeadm_master}", privileged: true
+  # end
+
+  # if ("#{servers["name"]}").include? "node"
+  # end
+  
 
 end
