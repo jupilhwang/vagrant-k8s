@@ -1,6 +1,22 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+require 'getoptlong'
+
+opts = GetoptLong.new(
+  ['--provider', GetoptLong::OPTIONAL_ARGUMENT],
+)
+PROVIDER="virtualbox"
+begin
+  opts.each do |opt, arg|
+    case opt
+      when '--provider'
+        PROVIDER=arg
+    end
+  end
+  rescue
+end
+
 MASTER_CPU = 2
 MASTER_MEMORY = 2048
 WORKER_NODE_CPU = 4
@@ -8,7 +24,6 @@ WORKER_NODE_MEMORY = 4096
 
 NUM_WORKDER_NODE = 2
 
-PROVIDER = ENV['provider'] || "virtualbox"
 VAGRANT_COMMAND = ARGV[0]
 
 bootstrap =<<-SCRIPTEND
