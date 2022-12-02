@@ -101,7 +101,7 @@ kubeadm_master =<<-SCRIPTEND
   kubectl get nodes -o wide
 
   wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-  sed -i '/        - --metric-resolution=15s/a \
+  sed -i '/        - --metric-resolution=15s$/a \
 \        - --kubelet-insecure-tls=true' components.yaml
   kubectl apply -f components.yaml
 
