@@ -1,1 +1,1 @@
-kubeadm join 192.168.56.5:6443 --token ud73vi.qrcg0adogur4p358 --discovery-token-ca-cert-hash sha256:c18e86142398fe1150eacc8298b60c6e11b14358dfe3fd23d37a2ddb516aabb3 
+kubeadm join 192.168.56.5:6443 --token pgci98.zktrsor0alu291xz --discovery-token-ca-cert-hash sha256:e8ca38436bb163294648bbf2f28964e5abbb091766ec05d4d98930b15bf4fbfa 
