@@ -165,7 +165,7 @@ Vagrant.configure("2") do |config|
 
     if PROVIDER == "hyperv"
       master.vm.provider "hyperv" do |vm|
-        # vm.name = "k8s-master"
+        vm.vmname = "k8s-master"
         vm.memory = MASTER_MEMORY
         vm.cpus = MASTER_CPU
 
@@ -224,6 +224,8 @@ Vagrant.configure("2") do |config|
 
       if PROVIDER == "hyperv"
         node.vm.provider "hyperv" do |vm|
+          vm.vmname = "k8s-node-#{i}"
+
           vm.memory = WORKER_NODE_MEMORY
           vm.cpus = WORKER_NODE_CPU
 
