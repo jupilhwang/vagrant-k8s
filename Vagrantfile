@@ -100,6 +100,10 @@ kubeadm_master =<<-SCRIPTEND
   kubectl taint nodes --all node-role.kubernetes.io/control-plane- node-role.kubernetes.io/master-
   kubectl get nodes -o wide
 
+  wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  sed -i '/        - --metric-resolution=15s/a         - --kubelet-use-node-status-port" components.yaml
+  kubectl apply -f components.yaml
+
 SCRIPTEND
 
 kubeadm_node =<<-SCRIPTEND
