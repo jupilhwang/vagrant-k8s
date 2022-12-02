@@ -101,9 +101,9 @@ kubeadm_master =<<-SCRIPTEND
   kubectl taint nodes --all node-role.kubernetes.io/control-plane- node-role.kubernetes.io/master-
   kubectl get nodes -o wide
 
-#   wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml >/dev/null 2>&1
-#   sed -i '/        - --metric-resolution=15s$/a\
-# \        - --kubelet-insecure-tls=true' components.yaml
+   wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml >/dev/null 2>&1
+   sed -i -e '/        - --metric-resolution=15s$/a ________- --kubelet-insecure-tls=true' -e 's/________/        /g' components.yaml
+
 #   kubectl apply -f components.yaml
 #   mv components.yaml /tmp >/dev/null
 
