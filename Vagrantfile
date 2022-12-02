@@ -91,19 +91,21 @@ kubeadm_master =<<-SCRIPTEND
   kubectl create -f https://docs.projectcalico.org/manifests/tigera-operator.yaml
   #kubectl apply -f https://docs.projectcalico.org/manifests/custom-resources.yaml
 
-  wget https://docs.projectcalico.org/manifests/custom-resources.yaml
+  wget https://docs.projectcalico.org/manifests/custom-resources.yaml >/dev/null 2>&1
   sed -i "s/192.168.0.0/10.10.0.0/g" custom-resources.yaml
   kubectl apply -f custom-resources.yaml
+  mv custom-resources.yaml /tmp
 
   sleep 100
   kubectl get pods -n calico-system
   kubectl taint nodes --all node-role.kubernetes.io/control-plane- node-role.kubernetes.io/master-
   kubectl get nodes -o wide
 
-  wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-  sed -i '/        - --metric-resolution=15s$/a \
+  wget https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml >/dev/null 2>&1
+  sed -i '/        - --metric-resolution=15s$/a\
 \        - --kubelet-insecure-tls=true' components.yaml
   kubectl apply -f components.yaml
+  mv components.yaml /tmp >/dev/null
 
 SCRIPTEND
 
