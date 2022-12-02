@@ -165,7 +165,7 @@ Vagrant.configure("2") do |config|
 
     if PROVIDER == "hyperv"
       master.vm.provider "hyperv" do |vm|
-        vm.name = "k8s-master"
+        # vm.name = "k8s-master"
         vm.memory = MASTER_MEMORY
         vm.cpus = MASTER_CPU
 
